@@ -11,8 +11,8 @@ class spamDetection:
     def __init__(self):
         df = pd.DataFrame()
         return
-    def readData(self, data = "spambase/spambase.header"):
-        self.df = pd.read_csv("spambase/spambase.data", header=None)
+    def readData(self, data = "spambase/spambase.data"):
+        self.df = pd.read_csv(data, header=None)
         return
     def setHeader(self, headerSrc = "spambase/spambase.header"):
         header = ""
@@ -25,7 +25,9 @@ class spamDetection:
         return
     def clean(self):
         self.df.dropna()
+        self.df = self.df.drop_duplicates()
 spamDe = spamDetection()
 spamDe.readData()
 spamDe.setHeader()
+spamDe.clean()
 print(spamDe.df)
