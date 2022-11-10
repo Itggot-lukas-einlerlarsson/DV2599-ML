@@ -105,7 +105,7 @@ class spamDetection:
         for i in range(0,4000):
             spam = True
             lst = self.df.iloc[i].to_list()
-            for j in indices:
+            for j in indices[:-1]:
                 if H[j] != lst[j]:
                     spam = False
             if spam == False:
