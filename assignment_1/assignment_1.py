@@ -102,7 +102,7 @@ class spamDetection:
         print(indices)
         total_amount = 0
         ham_detected = 0
-        for i in range(0,4000):
+        for i in range(0,len(self.df)):
             spam = True
             lst = self.df.iloc[i].to_list()
             for j in indices:
