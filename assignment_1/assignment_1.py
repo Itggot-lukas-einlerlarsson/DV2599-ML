@@ -34,28 +34,39 @@ class spamDetection:
         """
             plots data
         """
-        plt.plot(self.df)
+        fig=plt.figure()
+        ax=fig.add_axes([0,0,1,1])
+        self.avg_spam_df = self.df[:1679].mean() #:1679 is spam
+        self.avg_ham_df = self.df[1679:].mean() #1679: is ham
+        ax.scatter(self.df.columns[:-4], self.avg_spam_df.to_list()[:-4], color='r')
+        ax.scatter(self.df.columns[:-4], self.avg_ham_df.to_list()[:-4], color='b')
+        ax.set_xlabel('column')
+        ax.set_ylabel('value')
+        ax.set_title('scatter plot')
+        # avg_spam_group = 0
+        # for value in avg_spam_df.to_list()[:24]:
+        #     avg_spam_group += value
+        # print(avg_spam_group/len(avg_spam_df.to_list()[:24]))
+        # avg_ham_group = 0
+        # for value in avg_ham_df.to_list()[24:-4]:
+        #     avg_ham_group += value
+        # print(avg_ham_group/len(avg_ham_df.to_list()[24:-4]))
         plt.show()
 
     def transformData(self):
         """
             Transforms the data
         """
-        # trans = KBinsDiscretizer(n_bins=10, encode='ordinal', strategy='uniform')
-        # self.df.iloc[:,:-4] = trans.fit_transform(self.df.iloc[:,:-4])
-        # intervalDict = {"a": (0, 0.2), "b": (0.2, 0.4), "c": (0.4, 0.6), "d": (0.6, 0.8), "e": (0.8, 1)}
-        for i in range(1679):#len(self.df)):
-            for j in range(len(self.df.iloc[i]-3)):
-                if self.df.iloc[i][j] > 0 and self.df.iloc[i][j] < 0.2:
-                    self.df.iloc[i][j] = 100.0 # first group
-                if self.df.iloc[i][j] > 0.2 and self.df.iloc[i][j] < 0.4:
-                    self.df.iloc[i][j] = 200.0 # second group
-                if self.df.iloc[i][j] > 0.4 and self.df.iloc[i][j] < 0.6:
-                    self.df.iloc[i][j] = 300.0 # third group
-                if self.df.iloc[i][j] > 0.6 and self.df.iloc[i][j] < 0.8:
-                    self.df.iloc[i][j] = 400.0 # fourth group
-                if self.df.iloc[i][j] > 0.8 and self.df.iloc[i][j] < 1:
-                    self.df.iloc[i][j] = 500.0 # fifth group
+        length = len(self.df)
+        # intervalIndex = pd.interval_range(start=0, freq=5, end=20, closed='left')
+        for column in self.df.columns:
+            self.df = self.df.sort_values(column)
+            # self.df[column] = pd.cut(self.df[column], bins = 10, precision = 1)
+            self.df[column] = pd.cut(self.df[column], bins = 5, precision = 1)
+        print(self.df)
+
+
+
 
     def LGG_Set(self, D):
         """ s. 108 in the course book
@@ -72,24 +83,53 @@ class spamDetection:
     def LGG_Conj(self, H, x):
         """ s. 110 in the course book
             input: conjunctions H, x
-            output: conjunction z
+            output: conjunction H
         """
-        z = x
         for i in range(len(x)):
             if H[i] == "?": # feature already considered general
                 continue
             if x[i] != H[i]: # no conjunction
-                z[i] = "?" # feature is general
-        return z
+                H[i] = "?" # feature is general
+        return H
+
+    def test(self):
+        H = self.LGG_Set(self.df) # get hypothesis
+        print("H:", H)
+        indices = []
+        for i,value in enumerate(H):
+            if value != "?": # feature is general and not interesting
+                indices.append(i)
+        print(indices)
+        total_amount = 0
+        ham_detected = 0
+        for i in range(0,4000):
+            spam = True
+            lst = self.df.iloc[i].to_list()
+            for j in indices:
+                if H[j] != lst[j]:
+                    spam = False
+            if spam == False:
+                ham_detected += 1
+            total_amount += 1
+        print("ham_detected:", ham_detected)
+        print("total_amount:", total_amount)
 
 def main():
     spamDe = spamDetection()
     spamDe.readData()
     spamDe.setHeader()
     spamDe.clean()
+
+    # check how many instances is classed as spam
+    # count = 0
+    # for i in range(len(spamDe.df)):
+    #     if spamDe.df.iloc[i][-1] == 1: # if classed as spam
+    #         count += 1
+    # print("amount of spam:", count)
     spamDe.transformData()
     # spamDe.plotData()
-    print(spamDe.LGG_Set(spamDe.df))
+    # print(spamDe.LGG_Set(spamDe.df))
+    spamDe.test()
 
 if __name__ == '__main__':
     main()
