@@ -38,41 +38,32 @@ class spamDetection:
         ax=fig.add_axes([0,0,1,1])
         self.avg_spam_df = self.df[:1679].mean() #:1679 is spam
         self.avg_ham_df = self.df[1679:].mean() #1679: is ham
-        ax.scatter(self.df.columns[:-4], avg_spam_df.to_list()[:-4], color='r')
-        ax.scatter(self.df.columns[:-4], avg_ham_df.to_list()[:-4], color='b')
+        ax.scatter(self.df.columns[:-4], self.avg_spam_df.to_list()[:-4], color='r')
+        ax.scatter(self.df.columns[:-4], self.avg_ham_df.to_list()[:-4], color='b')
         ax.set_xlabel('column')
         ax.set_ylabel('value')
         ax.set_title('scatter plot')
-        avg_spam_group = 0
-        for value in avg_spam_df.to_list()[:24]:
-            avg_spam_group += value
-        print(avg_spam_group/len(avg_spam_df.to_list()[:24]))
-        avg_ham_group = 0
-        for value in avg_ham_df.to_list()[24:-4]:
-            avg_ham_group += value
-        print(avg_ham_group/len(avg_ham_df.to_list()[24:-4]))
+        # avg_spam_group = 0
+        # for value in avg_spam_df.to_list()[:24]:
+        #     avg_spam_group += value
+        # print(avg_spam_group/len(avg_spam_df.to_list()[:24]))
+        # avg_ham_group = 0
+        # for value in avg_ham_df.to_list()[24:-4]:
+        #     avg_ham_group += value
+        # print(avg_ham_group/len(avg_ham_df.to_list()[24:-4]))
         plt.show()
 
     def transformData(self):
         """
             Transforms the data
         """
-        # self.df = self.df.round(1) # round each value to 1 decimal
-        self.df = self.df.multiply(10) # multiply each value by 10
+        length = len(self.df)
+        # intervalIndex = pd.interval_range(start=0, freq=5, end=20, closed='left')
         for column in self.df.columns:
-            self.df.loc[self.df[column].between(0,5, "both"), column] = 100000
-            self.df.loc[self.df[column].between(5,10, "right"), column] = 200000
-            self.df.loc[self.df[column].between(10,99999, "right"), column] = 300000
+            self.df = self.df.sort_values(column)
+            # self.df[column] = pd.cut(self.df[column], bins = 10, precision = 1)
+            self.df[column] = pd.cut(self.df[column], bins = 5, precision = 1)
         print(self.df)
-
-        # trans = KBinsDiscretizer(n_bins=10, encode='continous', strategy='uniform')
-        # self.df.iloc[:,:-4] = trans.fit_transform(self.df.iloc[:,:-4])
-        # self.df = self.df.sort_values(by = ["word_freq_make"])
-        # print(self.df)
-        # self.df = self.df.round(1)
-        # print(self.df)
-        # for column in self.df.columns:
-        #     self.df = self.df.round(column)
 
 
 
@@ -102,7 +93,7 @@ class spamDetection:
         return H
 
     def test(self):
-        H = self.LGG_Set(self.df)
+        H = self.LGG_Set(self.df) # get hypothesis
         print("H:", H)
         indices = []
         for i,value in enumerate(H):
