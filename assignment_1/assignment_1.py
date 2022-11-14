@@ -32,17 +32,19 @@ class spamDetection:
 
     def plotData(self):
         """
-            plots data
+            plots data, average of spam and ham features
         """
         fig=plt.figure()
         ax=fig.add_axes([0,0,1,1])
         self.avg_spam_df = self.df[:1679].mean() #:1679 is spam
         self.avg_ham_df = self.df[1679:].mean() #1679: is ham
+        # print(len(self.avg_ham_df))
+        # print(len(self.avg_spam_df))
         ax.scatter(self.df.columns[:-4], self.avg_spam_df.to_list()[:-4], color='r')
         ax.scatter(self.df.columns[:-4], self.avg_ham_df.to_list()[:-4], color='b')
         ax.set_xlabel('column')
         ax.set_ylabel('value')
-        ax.set_title('scatter plot')
+        ax.set_title('scatter plot, red = spam, blue = ham')
         # avg_spam_group = 0
         # for value in avg_spam_df.to_list()[:24]:
         #     avg_spam_group += value
@@ -61,8 +63,8 @@ class spamDetection:
         # intervalIndex = pd.interval_range(start=0, freq=5, end=20, closed='left')
         for column in self.df.columns:
             self.df = self.df.sort_values(column)
-            # self.df[column] = pd.cut(self.df[column], bins = 10, precision = 1)
-            self.df[column] = pd.cut(self.df[column], bins = 5, precision = 1)
+            self.df[column] = pd.cut(self.df[column], bins = 10, precision = 1)
+            # self.df[column] = pd.cut(self.df[column], bins = 5, precision = 1)
         print(self.df)
 
 
@@ -75,7 +77,7 @@ class spamDetection:
         """
         x = D.iloc[0].to_list()
         H = x
-        for i in range(1, 1679): #len(D)):
+        for i in range(1, len(D)):
             x = D.iloc[i].to_list()
             H = self.LGG_Conj(H, x)
         return H
@@ -92,44 +94,61 @@ class spamDetection:
                 H[i] = "?" # feature is general
         return H
 
-    def test(self):
-        H = self.LGG_Set(self.df) # get hypothesis
+    def splitData(self,dataframe, testSize):
+        """
+            Create train and test dataframes, argument is spam data
+        """
+        testDataSize = int(len(dataframe)*testSize)+1
+        testDataframe = dataframe[:testDataSize]
+        trainDataframe = dataframe[testDataSize:]
+        testDataframe = testDataframe.append(self.df[1679:]) # add ham for testing
+        return testDataframe, trainDataframe, testDataSize
+
+    def test(self, testDataframe, trainDataframe, testDataSize):
+        """
+            Train model with trainDataframe
+            test model with testDataframe that includes test spam + ham mails
+            output: printed info about ham detected and falseNegative
+        """
+        H = self.LGG_Set(trainDataframe) # get hypothesis
         print("H:", H)
         indices = []
         for i,value in enumerate(H):
-            if value != "?": # feature is general and not interesting
+            if value != "?": # and i != 57: # feature is general and not interesting
                 indices.append(i)
         print(indices)
-        total_amount = 0
-        ham_detected = 0
-        for i in range(0,len(self.df)):
+        totalAmount = 0
+        falseNegative = 0
+        hamDetected = 0
+        for i in range(0,len(testDataframe)):
             spam = True
-            lst = self.df.iloc[i].to_list()
+            lst = testDataframe.iloc[i].to_list() #get an instance (row of features)
             for j in indices:
-                if H[j] != lst[j]:
+                if H[j] != lst[j]: # see if there is no conjunction in one feature
                     spam = False
+                    if i < testDataSize:
+                        falseNegative +=1 #
             if spam == False:
-                ham_detected += 1
-            total_amount += 1
-        print("ham_detected:", ham_detected)
-        print("total_amount:", total_amount)
-
+                hamDetected += 1
+            totalAmount += 1
+        print("hamDetected:", hamDetected)
+        print("totalAmount:", totalAmount)
+        print("falseNegative:", falseNegative)
 def main():
     spamDe = spamDetection()
     spamDe.readData()
     spamDe.setHeader()
     spamDe.clean()
-
-    # check how many instances is classed as spam
-    # count = 0
-    # for i in range(len(spamDe.df)):
-    #     if spamDe.df.iloc[i][-1] == 1: # if classed as spam
-    #         count += 1
-    # print("amount of spam:", count)
+    # spamDe.plotData() #plot average spam and ham feature values
+    print("transformed data:\n" + "-"*20)
     spamDe.transformData()
-    # spamDe.plotData()
-    # print(spamDe.LGG_Set(spamDe.df))
-    spamDe.test()
+    print("\nsplit data:\n" + "-"*20)
+    testDataframe, trainDataframe, testDataSize = spamDe.splitData(spamDe.df[:1679], 0.3) #split spam data
+    print("testDataframe length:", len(testDataframe))
+    print("trainDataframe length:", len(trainDataframe))
+    print("size of spam test data:", testDataSize)
+    print("\ntesting model...:\n" + "-"*20)
+    spamDe.test(testDataframe, trainDataframe, testDataSize)
 
 if __name__ == '__main__':
     main()
