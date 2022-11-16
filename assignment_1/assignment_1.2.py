@@ -132,13 +132,13 @@ class spamDetection:
     def computeHypothesisSpace(self, quartiles = 4):
         """ page 106 in the course book
         """
-        sizeOfPossibleInstances = pow((len(self.df.columns)-1), quartiles)
-        numberOfPossibleExtensions = pow(2, sizeOfPossibleInstances)
-        sizeOfHypothesisSpace = pow((len(self.df.columns)-1), quartiles+1) #abscense of a feature as an additional "value"
+        # sizeOfPossibleInstances = pow(quartiles, (len(self.df.columns)-1))
+        # numberOfPossibleExtensions = pow(2, sizeOfPossibleInstances)
+        # sizeOfHypothesisSpace = pow(quartiles+1,(len(self.df.columns)-1)) #abscense of a feature as an additional "value"
         print("-"*20)
-        print("Size of possible instances:", sizeOfPossibleInstances)
-        print("Number of possible extensions:  2 ^",sizeOfPossibleInstances)
-        print("Size of hypothesis space:", sizeOfHypothesisSpace)
+        print(f"Size of possible instances: {quartiles} ^ {(len(self.df.columns)-1)}")
+        print(f"Number of possible extensions:  2 ^ ({quartiles} ^ {(len(self.df.columns)-1)})")
+        print(f"Size of hypothesis space: {quartiles+1} ^ {(len(self.df.columns)-1)}")
         print("-"*20)
 
     def printConfusionMatrix(self, TP, FP, TN, FN):
