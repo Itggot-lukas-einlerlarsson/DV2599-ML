@@ -36,23 +36,12 @@ class spamDetection:
         """
         fig=plt.figure()
         ax=fig.add_axes([0,0,1,1])
-        self.avg_spam_df = self.df[:1679].mean() #:1679 is spam
-        self.avg_ham_df = self.df[1679:].mean() #1679: is ham
-        # print(len(self.avg_ham_df))
-        # print(len(self.avg_spam_df))
+        self.avg_spam_df = self.df.loc[self.df["spam"] == 1].mean() # is spam
+        self.avg_ham_df = self.df.loc[self.df["spam"] == 0].mean() # is ham
         ax.scatter(self.df.columns[:-4], self.avg_spam_df.to_list()[:-4], color='r')
         ax.scatter(self.df.columns[:-4], self.avg_ham_df.to_list()[:-4], color='b')
-        ax.set_xlabel('column')
-        ax.set_ylabel('value')
-        ax.set_title('scatter plot, red = spam, blue = ham')
-        # avg_spam_group = 0
-        # for value in avg_spam_df.to_list()[:24]:
-        #     avg_spam_group += value
-        # print(avg_spam_group/len(avg_spam_df.to_list()[:24]))
-        # avg_ham_group = 0
-        # for value in avg_ham_df.to_list()[24:-4]:
-        #     avg_ham_group += value
-        # print(avg_ham_group/len(avg_ham_df.to_list()[24:-4]))
+        plt.xlabel('column')
+        plt.ylabel('value')
         plt.show()
 
     def transformData(self):
@@ -61,13 +50,21 @@ class spamDetection:
         """
         length = len(self.df)
         # intervalIndex = pd.interval_range(start=0, freq=5, end=20, closed='left')
+        # length = len(self.df)
+        # intervalIndex = pd.interval_range(start=0, freq=5, end=20, closed='left')
+        # bins = pd.IntervalIndex.from_tuples([(0, 1), (1,2),(2, 3), (4, 5000)])
         for column in self.df.columns:
             self.df = self.df.sort_values(column)
-            self.df[column] = pd.cut(self.df[column], bins = 10, precision = 1)
-            # self.df[column] = pd.cut(self.df[column], bins = 5, precision = 1)
+            self.df[column] = pd.qcut(self.df[column], q = 15, precision = 1, duplicates = "drop")#,4,5,6,7,8,9,10])
         print(self.df)
 
-
+    def computeHypothesisSpace(self):
+        """
+            Compute
+            1) the size of possible instances,
+            2) the size of hypothesis space (the number of possible extensions), and
+            3) the size of hypothesis space, taking into account only the number of possible conjunctive concepts according to the descriptions in Section 4.1 of the main literature.
+        """
 
 
     def LGG_Set(self, D):
@@ -77,6 +74,7 @@ class spamDetection:
         """
         x = D.iloc[0].to_list()
         H = x
+        H[57] = "?"
         for i in range(1, len(D)):
             x = D.iloc[i].to_list()
             H = self.LGG_Conj(H, x)
@@ -139,16 +137,16 @@ def main():
     spamDe.readData()
     spamDe.setHeader()
     spamDe.clean()
-    # spamDe.plotData() #plot average spam and ham feature values
-    print("transformed data:\n" + "-"*20)
-    spamDe.transformData()
-    print("\nsplit data:\n" + "-"*20)
-    testDataframe, trainDataframe, testDataSize = spamDe.splitData(spamDe.df[:1679], 0.3) #split spam data
-    print("testDataframe length:", len(testDataframe))
-    print("trainDataframe length:", len(trainDataframe))
-    print("size of spam test data:", testDataSize)
-    print("\ntesting model...:\n" + "-"*20)
-    spamDe.test(testDataframe, trainDataframe, testDataSize)
+    spamDe.plotData() #plot average spam and ham feature values
+    # print("transformed data:\n" + "-"*20)
+    # spamDe.transformData()
+    # print("\nsplit data:\n" + "-"*20)
+    # testDataframe, trainDataframe, testDataSize = spamDe.splitData(spamDe.df[:1679], 0.3) #split spam data
+    # print("testDataframe length:", len(testDataframe))
+    # print("trainDataframe length:", len(trainDataframe))
+    # print("size of spam test data:", testDataSize)
+    # print("\ntesting model...:\n" + "-"*20)
+    # spamDe.test(testDataframe, trainDataframe, testDataSize)
 
 if __name__ == '__main__':
     main()

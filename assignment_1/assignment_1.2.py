@@ -7,7 +7,6 @@
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.preprocessing import KBinsDiscretizer
 import math
 import random
 
@@ -38,21 +37,12 @@ class spamDetection:
         """
         fig=plt.figure()
         ax=fig.add_axes([0,0,1,1])
-        self.avg_spam_df = self.df[:1679].mean() #:1679 is spam
-        self.avg_ham_df = self.df[1679:].mean() #1679: is ham
+        self.avg_spam_df = self.df.loc[self.df["spam"] == 1].mean() # is spam
+        self.avg_ham_df = self.df.loc[self.df["spam"] == 0].mean() # is ham
         ax.scatter(self.df.columns[:-4], self.avg_spam_df.to_list()[:-4], color='r')
         ax.scatter(self.df.columns[:-4], self.avg_ham_df.to_list()[:-4], color='b')
-        ax.set_xlabel('column')
-        ax.set_ylabel('value')
-        ax.set_title('scatter plot')
-        # avg_spam_group = 0
-        # for value in avg_spam_df.to_list()[:24]:
-        #     avg_spam_group += value
-        # print(avg_spam_group/len(avg_spam_df.to_list()[:24]))
-        # avg_ham_group = 0
-        # for value in avg_ham_df.to_list()[24:-4]:
-        #     avg_ham_group += value
-        # print(avg_ham_group/len(avg_ham_df.to_list()[24:-4]))
+        plt.xlabel('column')
+        plt.ylabel('value')
         plt.show()
 
     def transformData(self, data):
@@ -126,6 +116,7 @@ class spamDetection:
         print("Precision:", TP / (TP + FP))
         print("Recall:", TP / (TP + FN))
         print("Accuracy:", (TP + TN) / (TP + FP + FN + TN))
+        self.printConfusionMatrix(TP, FP, TN, FN)
 
     def createTrainingSet(self, col = "spam", val = 1, parts = 5):
         trainingSet = self.df.loc[self.df[col] == val]
@@ -138,6 +129,33 @@ class spamDetection:
         self.trainingSet = pd.concat([self.trainingSet, trainingSet[interval[testIndex][1]+1:]], axis=0)
         return
 
+    def computeHypothesisSpace(self, quartiles = 4):
+        """ page 106 in the course book
+        """
+        sizeOfPossibleInstances = pow((len(self.df.columns)-1), quartiles)
+        numberOfPossibleExtensions = pow(2, sizeOfPossibleInstances)
+        sizeOfHypothesisSpace = pow((len(self.df.columns)-1), quartiles+1) #abscense of a feature as an additional "value"
+        print("-"*20)
+        print("Size of possible instances:", sizeOfPossibleInstances)
+        print("Number of possible extensions:  2 ^",sizeOfPossibleInstances)
+        print("Size of hypothesis space:", sizeOfHypothesisSpace)
+        print("-"*20)
+
+    def printConfusionMatrix(self, TP, FP, TN, FN):
+        """ page 54 in the course book
+        """
+        print("-"*60)
+        print("\t\tPredicted +\tPredicted -")
+        print("-"*60)
+        print(f"Actual +\t\t{TP}\t\t{FN}\t\t{TP+FN}")
+        print(f"Actual -\t\t{FP}\t\t{TN}\t\t{FP+TN}")
+        print(f"\t\t\t{TP+FP}\t\t{FN+TN}\t\t{TP+TN+FN+FP}")
+        print("-"*60)
+
+
+
+
+
 def main():
     spamDe = spamDetection()
     spamDe.readData()
@@ -145,6 +163,7 @@ def main():
     spamDe.clean()
     spamDe.createTrainingSet()
     spamDe.trainingSet = spamDe.transformData(spamDe.trainingSet)
+    spamDe.computeHypothesisSpace()
     spamDe.test()
 
 if __name__ == '__main__':
