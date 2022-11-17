@@ -1,9 +1,4 @@
-#https://github.com/sampepose/SpamClassifier
-#https://rstudio-pubs-static.s3.amazonaws.com/89589_4d2a66ce5276434c9f56a54df5739e85.html
-#https://www2.stat.duke.edu/courses/Spring06/sta293.3/topic9/spam_name.txt
-#https://en.wikipedia.org/wiki/Receiver_operating_characteristic
-#https://en.wikipedia.org/wiki/Confusion_matrix
-
+# Kim Lillé and Lukas Einler Larsson
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
@@ -53,7 +48,7 @@ class spamDetection:
             if column == "spam":
                 continue
             data = data.sort_values(column)
-            data[column] = pd.qcut(data[column], q=4, duplicates="drop", precision=1)
+            data[column] = pd.qcut(data[column], q=4, duplicates="drop", precision=2)
         return data
 
     def LGG_Set(self, D):
@@ -87,6 +82,8 @@ class spamDetection:
         for i,value in enumerate(H):
             if value != "?": # feature is general and not interesting
                 indices.append(i)
+        print("Hypothesis:", H)
+        print("-"*20)
         TN = 0
         FN = 0
         TP = 0
@@ -94,7 +91,7 @@ class spamDetection:
         for i in range(len(self.df)):
             lst = self.df.iloc[i].to_list()
             for j in indices:
-                if not (H[j].left <= lst[j] and H[j].right >= lst[j]):
+                if not (H[j].left < lst[j] and H[j].right >= lst[j]):
                     if lst[57] == 0:
                         TN += 1
                     else:
@@ -132,9 +129,9 @@ class spamDetection:
     def computeHypothesisSpace(self, quartiles = 4):
         """ page 106 in the course book
         """
-        # sizeOfPossibleInstances = pow(quartiles, (len(self.df.columns)-1))
-        # numberOfPossibleExtensions = pow(2, sizeOfPossibleInstances)
-        # sizeOfHypothesisSpace = pow(quartiles+1,(len(self.df.columns)-1)) #abscense of a feature as an additional "value"
+        sizeOfPossibleInstances = pow(quartiles, (len(self.df.columns)-1))
+        numberOfPossibleExtensions = pow(2, sizeOfPossibleInstances)
+        sizeOfHypothesisSpace = pow(quartiles+1,(len(self.df.columns)-1))
         print("-"*20)
         print(f"Size of possible instances: {quartiles} ^ {(len(self.df.columns)-1)}")
         print(f"Number of possible extensions:  2 ^ ({quartiles} ^ {(len(self.df.columns)-1)})")
@@ -153,9 +150,6 @@ class spamDetection:
         print("-"*60)
 
 
-
-
-
 def main():
     spamDe = spamDetection()
     spamDe.readData()
@@ -163,7 +157,6 @@ def main():
     spamDe.clean()
     spamDe.createTrainingSet()
     spamDe.trainingSet = spamDe.transformData(spamDe.trainingSet)
-    spamDe.computeHypothesisSpace()
     spamDe.test()
 
 if __name__ == '__main__':
