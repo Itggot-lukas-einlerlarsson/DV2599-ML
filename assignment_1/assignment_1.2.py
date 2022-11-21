@@ -48,7 +48,7 @@ class spamDetection:
             if column == "spam":
                 continue
             data = data.sort_values(column)
-            data[column] = pd.qcut(data[column], q=4, duplicates="drop", precision=2)
+            data[column] = pd.qcut(data[column], q= 4,  duplicates = "drop", precision = 2)
         return data
 
     def LGG_Set(self, D):
@@ -91,14 +91,14 @@ class spamDetection:
         for i in range(len(self.df)):
             lst = self.df.iloc[i].to_list()
             for j in indices:
-                if not (H[j].left < lst[j] and H[j].right >= lst[j]):
-                    if lst[57] == 0:
+                if not (H[j].left < lst[j] and H[j].right >= lst[j]): # if instance value is not in interval
+                    if lst[57] == 0: #if ham
                         TN += 1
                     else:
                         FN += 1
                     break
                 if j == indices[-1]:
-                    if lst[57] == 1:
+                    if lst[57] == 1: #if spam
                         TP += 1
                     else:
                         FP += 1
@@ -108,7 +108,7 @@ class spamDetection:
         print("False Positive:", FP)
         print("True Negative:", TN)
         print("False Negative:", FN)
-        print("total_amount:", TP+FP+TN+FN)
+        print("Total Amount:", TP+FP+TN+FN)
         print("-"*20)
         print("Precision:", TP / (TP + FP))
         print("Recall:", TP / (TP + FN))
@@ -129,13 +129,19 @@ class spamDetection:
     def computeHypothesisSpace(self, quartiles = 4):
         """ page 106 in the course book
         """
-        sizeOfPossibleInstances = pow(quartiles, (len(self.df.columns)-1))
+        sizeOfPossibleInstances = 1
         numberOfPossibleExtensions = pow(2, sizeOfPossibleInstances)
-        sizeOfHypothesisSpace = pow(quartiles+1,(len(self.df.columns)-1))
+        sizeOfHypothesisSpace = 1
+        for column in self.trainingSet:
+            if column == "spam" or self.trainingSet[column].nunique() == 0: # if one column exist of only zeroes -> no unique intervals
+                continue
+            sizeOfPossibleInstances *= self.trainingSet[column].nunique()
+            sizeOfHypothesisSpace *= (self.trainingSet[column].nunique()+1)
+        # numberOfPossibleExtensions = pow(2, sizeOfPossibleInstances)
         print("-"*20)
-        print(f"Size of possible instances: {quartiles} ^ {(len(self.df.columns)-1)}")
-        print(f"Number of possible extensions:  2 ^ ({quartiles} ^ {(len(self.df.columns)-1)})")
-        print(f"Size of hypothesis space: {quartiles+1} ^ {(len(self.df.columns)-1)}")
+        print(f"Size of possible instances: {sizeOfPossibleInstances}")
+        print(f"Number of possible extensions:  2 ^ ({sizeOfPossibleInstances})")
+        print(f"Size of hypothesis space: {sizeOfHypothesisSpace}")
         print("-"*20)
 
     def printConfusionMatrix(self, TP, FP, TN, FN):
@@ -155,8 +161,10 @@ def main():
     spamDe.readData()
     spamDe.setHeader()
     spamDe.clean()
+    # spamDe.plotData()
     spamDe.createTrainingSet()
     spamDe.trainingSet = spamDe.transformData(spamDe.trainingSet)
+    spamDe.computeHypothesisSpace()
     spamDe.test()
 
 if __name__ == '__main__':
