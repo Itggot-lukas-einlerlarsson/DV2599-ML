@@ -2,7 +2,6 @@
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
-import math
 import random
 
 class spamDetection:
@@ -32,10 +31,10 @@ class spamDetection:
         """
         fig=plt.figure()
         ax=fig.add_axes([0,0,1,1])
-        self.avg_spam_df = self.df.loc[self.df["spam"] == 1].mean() # is spam
-        self.avg_ham_df = self.df.loc[self.df["spam"] == 0].mean() # is ham
-        ax.scatter(self.df.columns[:-4], self.avg_spam_df.to_list()[:-4], color='r')
-        ax.scatter(self.df.columns[:-4], self.avg_ham_df.to_list()[:-4], color='b')
+        avg_spam_df = self.df.loc[self.df["spam"] == 1].mean() # is spam
+        avg_ham_df = self.df.loc[self.df["spam"] == 0].mean() # is ham
+        ax.scatter(self.df.columns[:-4], avg_spam_df.to_list()[:-4], color='r')
+        ax.scatter(self.df.columns[:-4], avg_ham_df.to_list()[:-4], color='b')
         plt.xlabel('column')
         plt.ylabel('value')
         plt.show()
@@ -77,6 +76,9 @@ class spamDetection:
         return H
 
     def test(self):
+        """
+            creates, trains and tests concept learning model
+        """
         H = self.LGG_Set(self.trainingSet) # get hypothesis
         indices = []
         for i,value in enumerate(H):
@@ -133,11 +135,10 @@ class spamDetection:
         numberOfPossibleExtensions = pow(2, sizeOfPossibleInstances)
         sizeOfHypothesisSpace = 1
         for column in self.trainingSet:
-            if column == "spam" or self.trainingSet[column].nunique() == 0: # if one column exist of only zeroes -> no unique intervals
+            if column == "spam" or self.trainingSet[column].nunique() == 0:
                 continue
             sizeOfPossibleInstances *= self.trainingSet[column].nunique()
             sizeOfHypothesisSpace *= (self.trainingSet[column].nunique()+1)
-        # numberOfPossibleExtensions = pow(2, sizeOfPossibleInstances)
         print("-"*20)
         print(f"Size of possible instances: {sizeOfPossibleInstances}")
         print(f"Number of possible extensions:  2 ^ ({sizeOfPossibleInstances})")
@@ -161,7 +162,6 @@ def main():
     spamDe.readData()
     spamDe.setHeader()
     spamDe.clean()
-    # spamDe.plotData()
     spamDe.createTrainingSet()
     spamDe.trainingSet = spamDe.transformData(spamDe.trainingSet)
     spamDe.computeHypothesisSpace()
