@@ -6,6 +6,13 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 
+# TODO:
+# 1. välja 3 algoritmer - KNN, SVM, Naive bayes
+# 2. ten fold test
+# 3. Skapa ett table som figur 12.4, SIDA 350
+# 4. Kör ett friedman test, figur 12.8, SIDA 355
+# 5. om det är signifikant differens, köra Nemeyi test SIDA 356
+
 class spamDetection:
     def __init__(self):
         df = pd.DataFrame()
