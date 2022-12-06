@@ -102,9 +102,16 @@ class spamDetection:
 
         ranks = self.get_friedmanRanks(accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes)
         self.printTable(np.array(accuracy_kNN), np.array(accuracy_SVM), np.array(accuracy_NaiveBayes), ranks)
-        mean_TOTrank, sum_squaredDiff, sum_squaredDiff_nk = self.run_FriedmanTest(ranks)
+        mean_TOTrank, sum_squaredDiff, sum_squaredDiff_nk, mean_ranks = self.run_FriedmanTest(ranks)
         CV = self.run_calcCriticalValue(k = 3, n = 10, siglevel = 0.05)
-        CD = self.run_nemenyiTest()
+        
+        if sum_squaredDiff > CV:
+            print(f"Friedman Test: There is a significant difference between the algorithms, {sum_squaredDiff} > {CV}")
+            print("Running running Nemeyi test:", end = " ")
+            self.run_nemenyiTest(mean_ranks)
+        else:
+            print("Friedman Test: There is no significant difference between the algorithms")
+
 
     def get_friedmanRanks(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, k = 3):
         """ Page 355, 356 in the course book
@@ -144,8 +151,9 @@ class spamDetection:
         print("-" * 60)
         # Friedman: Average rank
         mean_kNNrank = ranks["kNN"].mean() # 2.1
-        mean_SVMrank = ranks["SVM"].mean() # 1.6 
+        mean_SVMrank = ranks["SVM"].mean() # 1.6
         mean_NaiveBayesrank = ranks["NaiveBayes"].mean() # 2.3
+        mean_ranks = [mean_kNNrank, mean_SVMrank, mean_NaiveBayesrank]
         print(f"avgRank\t\t{mean_kNNrank}\t\t{mean_SVMrank}\t\t{mean_NaiveBayesrank}")
 
         # sum of squared differences
@@ -167,21 +175,26 @@ class spamDetection:
         print("avg total rank:", mean_TOTrank)
         print("the sum of squared differences(spread of rank centriods):", sum_squaredDiff)
         print("the sum of squared differences nk(spread over all ranks):", sum_squaredDiff_nk)
-        return (mean_TOTrank, sum_squaredDiff, sum_squaredDiff_nk)
+        return (mean_TOTrank, sum_squaredDiff, sum_squaredDiff_nk, mean_ranks)
 
     def run_calcCriticalValue(self, k, n, siglevel):
         """ page 356
-            calcs critical value via statistical table :) ?
+            calcs critical value via statistical table :)
+            https://home.ubalt.edu/ntsbarsh/business-stat/StatistialTables.pdf
+            (from TABLE A.4, accessed 2022-12)
         """
-        pass
+        return 7.815
 
-    def run_nemenyiTest(self, k = 3, n = 10, sigLevel = 0.05):
+    def run_nemenyiTest(self, mean_ranks, k = 3, n = 10, sigLevel = 0.05):
         """ page 356
+            p_sigLevel is taken from the book
         """
-        p_sigLevel = sigLevel #**
+        p_sigLevel = 2.343
         criticalDifference = p_sigLevel * math.sqrt( (k*(k+1))/(6*n) )
-        print(criticalDifference)
-        return criticalDifference
+        if max(mean_ranks) - min(mean_ranks) > criticalDifference:
+            print(f"There is a significant difference between the algorithms with average ranks: {max(mean_ranks)} and {min(mean_ranks)}")
+        else:
+            print(f"There is a significant difference between the algorithms")
 
 
 
