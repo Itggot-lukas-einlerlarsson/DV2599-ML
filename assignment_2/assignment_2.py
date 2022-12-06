@@ -151,9 +151,9 @@ class spamDetection:
         # sum of squared differences
         # mean_TOTrank = (mean_kNNrank + mean_SVMrank + mean_NaiveBayesrank)/3
         mean_TOTrank = (k+1)/2
-        sum_squaredDiff = (mean_TOTrank-mean_kNNrank)**2
-        sum_squaredDiff = (mean_TOTrank-mean_SVMrank)**2
-        sum_squaredDiff = (mean_TOTrank-mean_NaiveBayesrank)**2
+        sum_squaredDiff = (mean_kNNrank - mean_TOTrank)**2
+        sum_squaredDiff = (mean_SVMrank - mean_TOTrank)**2
+        sum_squaredDiff = (mean_NaiveBayesrank - mean_TOTrank)**2
         sum_squaredDiff *= len(ranks["kNN"])
 
         sum_squaredDiff_nk = 0
