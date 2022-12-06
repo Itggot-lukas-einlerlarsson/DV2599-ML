@@ -91,6 +91,7 @@ class spamDetection:
         accuracy_kNN = []
         accuracy_SVM = []
         accuracy_NaiveBayes = []
+
         for train_index, test_index in skf.split(X,y): # X is the feature set and y is the target
             print("Train:", train_index, "Validation:", test_index[0:2]) #val_index  = test_index?
             X_train, X_test = X[train_index], X[test_index]
@@ -98,10 +99,14 @@ class spamDetection:
             accuracy_kNN.append(self.run_kNNclassifier(10, X_train, X_test, y_train, y_test))
             accuracy_SVM.append(self.run_SVMclassifier(X_train, X_test, y_train, y_test))
             accuracy_NaiveBayes.append(self.run_NaiveBayesClassifier(X_train, X_test, y_train, y_test))
-        ranks = self.run_friedmanTest(accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes)
-        self.printTable(np.array(accuracy_kNN), np.array(accuracy_SVM), np.array(accuracy_NaiveBayes), ranks)
 
-    def run_friedmanTest(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, k = 3):
+        ranks = self.get_friedmanRanks(accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes)
+        self.printTable(np.array(accuracy_kNN), np.array(accuracy_SVM), np.array(accuracy_NaiveBayes), ranks)
+        mean_TOTrank, sum_squaredDiff, sum_squaredDiff_nk = self.run_FriedmanTest(ranks)
+        CV = self.run_calcCriticalValue(k = 3, n = 10, siglevel = 0.05)
+        CD = self.run_nemenyiTest()
+
+    def get_friedmanRanks(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, k = 3):
         """ Page 355, 356 in the course book
             idea: rank the performance of all k algorithms per data set
             from best performance (rank 1) to worst (rank k)
@@ -127,39 +132,16 @@ class spamDetection:
                 if value[1] == "NaiveBayes":
                     ranks_NaiveBayes.append(rank)
                 rank += 1
-        # ranks = [np.array(ranks_kNN), np.array(ranks_SVM), np.array(ranks_NaiveBayes)]
         ranks = {}
         ranks["kNN"] = np.array(ranks_kNN)
         ranks["SVM"] = np.array(ranks_SVM)
         ranks["NaiveBayes"] = np.array(ranks_NaiveBayes)
-        print(ranks)
         return ranks
 
-    def run_nemenyiTest(self, k = 3, n = 10, sigLevel = 0.05):
-        criticalDifference = sigLevel * math.sqrt( (k*(k+1))/(6*n) )
-        return criticalDifference
-
-
-
-    def printTable(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, ranks = None):
-        """ Page 350.
-            printing a table similar to the figure 12.4 in the course book
-        """
+    def run_FriedmanTest(self, ranks, k = 3):
         print("-" * 60)
-        print("Fold\t\tkNN\t\tSVM\t\tNaive Bayes")
+        print("\t\tkNN\t\tSVM\t\tNaive Bayes")
         print("-" * 60)
-        np.set_printoptions(precision=4) # Doesnt work unless print whole array it seems
-        for i in range(len(accuracy_kNN)):
-            # print(accuracy_kNN)
-            # print(f"{i+1}\t\t{accuracy_kNN[i]}{ranks["kNN"][i]}\t\t{accuracy_SVM[i]}{ranks["SVM"][i]}\t\t{accuracy_NaiveBayes[i]}{ranks["NaiveBayes"][i]}")
-            print(i+1, end = "\t\t")
-            print(accuracy_kNN[i], ranks["kNN"][i], end = "\t\t")
-            print(accuracy_SVM[i], ranks["SVM"][i],end = "\t\t")
-            print(accuracy_NaiveBayes[i], ranks["NaiveBayes"][i])
-        print("-" * 60)
-        print(f"avg\t\t{accuracy_kNN.mean()}\t\t{accuracy_SVM.mean()}\t\t{accuracy_NaiveBayes.mean()}")
-        print(f"stdev\t\t{accuracy_kNN.std()}\t\t{accuracy_SVM.std()}\t\t{accuracy_NaiveBayes.std()}")
-
         # Friedman: Average rank
         mean_kNNrank = ranks["kNN"].mean()
         mean_SVMrank = ranks["SVM"].mean()
@@ -167,11 +149,11 @@ class spamDetection:
         print(f"avgRank\t\t{mean_kNNrank}\t\t{mean_SVMrank}\t\t{mean_NaiveBayesrank}")
 
         # sum of squared differences
-        mean_TOTrank = (mean_kNNrank + mean_SVMrank + mean_NaiveBayesrank)/3
+        # mean_TOTrank = (mean_kNNrank + mean_SVMrank + mean_NaiveBayesrank)/3
+        mean_TOTrank = (k+1)/2
         sum_squaredDiff = (mean_TOTrank-mean_kNNrank)**2
         sum_squaredDiff = (mean_TOTrank-mean_SVMrank)**2
         sum_squaredDiff = (mean_TOTrank-mean_NaiveBayesrank)**2
-        assert len(ranks["kNN"]) == 10
         sum_squaredDiff *= len(ranks["kNN"])
 
         sum_squaredDiff_nk = 0
@@ -181,15 +163,44 @@ class spamDetection:
             sum_squaredDiff_nk += (ranks["NaiveBayes"][i] - mean_TOTrank)**2
         sum_squaredDiff_nk *= 1/(len(ranks["kNN"])*(len(ranks)-1))
 
+        print("-" * 60)
         print("avg total rank:", mean_TOTrank)
-        print("the sum of squared differences:", sum_squaredDiff)
-        print("the sum of squared differences nk:", sum_squaredDiff_nk)
-        # print("avgRank", end = "\t\t")
-        # print(ranks["kNN"].mean(), end = "\t\t")
-        # print(ranks["SVM"].mean(),end = "\t\t")
-        # print(ranks["NaiveBayes"].mean())
+        print("the sum of squared differences(spread of rank centriods):", sum_squaredDiff)
+        print("the sum of squared differences nk(spread over all ranks):", sum_squaredDiff_nk)
+        return (mean_TOTrank, sum_squaredDiff, sum_squaredDiff_nk)
 
-        # print(f"avgRank\t\t{ranks["kNN"].mean()}\t\t{ranks["SVM"].mean()}\t\t{ranks["NaiveBayes"].mean()}")
+    def run_calcCriticalValue(self, k, n, siglevel):
+        """ page 356
+            calcs critical value via statistical table :) ?
+        """
+        pass
+
+    def run_nemenyiTest(self, k = 3, n = 10, sigLevel = 0.05):
+        """ page 356
+        """
+        p_sigLevel = sigLevel #**
+        criticalDifference = p_sigLevel * math.sqrt( (k*(k+1))/(6*n) )
+        print(criticalDifference)
+        return criticalDifference
+
+
+
+    def printTable(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, ranks = None):
+        """ Page 350.
+            printing a table similar to the figure 12.4(8) in the course book
+        """
+        print("-" * 60)
+        print("Fold\t\tkNN\t\tSVM\t\tNaive Bayes")
+        print("-" * 60)
+        np.set_printoptions(precision=4) # Doesnt work unless print whole array it seems
+        for i in range(len(accuracy_kNN)):
+            print(i+1, end = "\t\t")
+            print(accuracy_kNN[i], ranks["kNN"][i], end = "\t\t")
+            print(accuracy_SVM[i], ranks["SVM"][i],end = "\t\t")
+            print(accuracy_NaiveBayes[i], ranks["NaiveBayes"][i])
+        print("-" * 60)
+        print(f"avg\t\t{accuracy_kNN.mean()}\t\t{accuracy_SVM.mean()}\t\t{accuracy_NaiveBayes.mean()}")
+        print(f"stdev\t\t{accuracy_kNN.std()}\t\t{accuracy_SVM.std()}\t\t{accuracy_NaiveBayes.std()}")
 
 
 def main():
