@@ -22,23 +22,23 @@ class spamDetection:
         self.df.dropna()
         self.df = self.df.drop_duplicates()
     def writeFraudCSV(self):
-        print("hello")
         outFolderName = "dataset"
         with open("dataset/frauds.csv", mode='w', encoding='utf-8') as dateFile:
-            fraudDF = self.df
-            fraudDF = self.df.loc[self.df["Class"] == 1] # is fraud
-            print(fraudDF)
-            for index, instance in fraudDF.iterrows():
-                print(fraudDF.iloc[index])
-                # dateFile.write(instance)
+            fraudDF = self.df.loc[self.df["Class"] == 1.0]
+            dateFile.write(fraudDF.to_csv())
+            # print(self.df)
+            # print(self.df.loc[self.df["Class"] == 1.0]) # is fraud
+            # print(fraudDF)
+            # for index, instance in fraudDF.iterrows():
+    def sampleDataset(self): #eventuellt
+        pass
 
 
 def main():
     spamDe = spamDetection()
     spamDe.readData()
     spamDe.setHeader()
-    # spamDe.clean()
-    print("hello1")
+    spamDe.clean()
     spamDe.writeFraudCSV()
 
 
