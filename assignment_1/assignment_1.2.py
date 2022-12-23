@@ -90,8 +90,8 @@ class spamDetection:
         FN = 0
         TP = 0
         FP = 0
-        for i in range(len(self.df)):
-            lst = self.df.iloc[i].to_list()
+        for i in range(len(self.testSet)):
+            lst = self.testSet.iloc[i].to_list()
             for j in indices:
                 if not (H[j].left < lst[j] and H[j].right >= lst[j]): # if instance value is not in interval
                     if lst[57] == 0: #if ham
@@ -118,12 +118,13 @@ class spamDetection:
         self.printConfusionMatrix(TP, FP, TN, FN)
 
     def createTrainingSet(self, col = "spam", val = 1, parts = 5):
-        trainingSet = self.df.loc[self.df[col] == val]
+        trainingSet = self.df.loc[self.df[col] == val] # 1679
+        self.testSet = self.df.loc[self.df[col] == 0] # 2531
         interval = [(0, len(trainingSet)//parts)]
         for i in range(1, parts):
             interval.append((interval[i-1][1] + 1, (i + 1) * len(trainingSet)//parts))
         testIndex = random.randint(0, parts-1)
-        testSet = interval[testIndex]
+        self.testSet = pd.concat([self.testSet, trainingSet[interval[testIndex][0]:interval[testIndex][1] ]], axis=0)# + 335 = 2866
         self.trainingSet = trainingSet[interval[0][0]:interval[testIndex][0]]
         self.trainingSet = pd.concat([self.trainingSet, trainingSet[interval[testIndex][1]+1:]], axis=0)
         return
