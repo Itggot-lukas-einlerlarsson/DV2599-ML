@@ -31,18 +31,19 @@ class fraudDetection:
         self.df.columns = header
         return
     def clean(self):
-        self.df.dropna()
-        self.df = self.df.drop_duplicates()
+        # self.df.dropna()
+        # self.df = self.df.drop_duplicates()
         self.cleaneDf = self.df.drop(["Class"], axis = 1)
         self.cleaneDf = self.cleaneDf.drop(["Time"], axis = 1)
         self.cleaneDf = self.cleaneDf.drop(["Amount"], axis = 1)
         print(self.cleaneDf.columns)
 
     def preprocess(self):
-        tf = Normalizer()
-        self.cleaneDf = self.cleaneDf.round(3)
-        tf.transform(self.cleaneDf)
-        print(self.cleaneDf)
+        pass
+        # tf = Normalizer()
+        # self.cleaneDf = self.cleaneDf.round(3)
+        # tf.transform(self.cleaneDf)
+        # print(self.cleaneDf)
 
     def testClusterModels(self, n = 7):
         """
@@ -53,24 +54,14 @@ class fraudDetection:
 
             DBSCAN desc: https://towardsdatascience.com/how-dbscan-works-and-why-should-i-use-it-443b4a191c80
         """
-        # kMeans = KMedoids(n_clusters=10, random_state=0)
-        # kMeans = KMeans(n_clusters= n, n_init=10) # går snabbt
-        kMeans = DBSCAN(eps=0.69, min_samples=5) # långsam men funka tog ca 5 min
-        # kMeans = SpectralClustering(n_clusters=n, assign_labels='discretize', random_state=0) # Unable to allocate 600. GiB for an array with shape (283726, 283726) and data type float64
-        # kMeans = AgglomerativeClustering() #Unable to allocate 300. GiB for an array with shape (40250079675,) and data type float64
-        kMeans.fit(self.cleaneDf.to_numpy())
-        fraud_labels = []
-        fraudIndices = self.df[self.df["Class"] == 1.0].index.to_numpy()
-        for index in fraudIndices:
-            fraud_labels.append(kMeans.labels_[index])
-        print(fraud_labels)
-        self.test(kMeans.labels_)
+        dbscanModel = DBSCAN(eps = 5, min_samples=10) # långsam men funka tog ca 5 min
+        dbscanModel.fit(self.cleaneDf[:20000].to_numpy())
+        self.test(dbscanModel.labels_)
 
     def plotKDistanceGraph(self, X, k):
         """
             https://stackoverflow.com/questions/43160240/how-to-plot-a-k-distance-graph-in-python
         """
-        # X = self.cleaneDf.to_numpy()  #.to_numpy()
         kn_distance = []
         for i in range(len(X)):
             eucl_dist = []
@@ -79,7 +70,6 @@ class fraudDetection:
                     math.sqrt(
                         ((X[i,0] - X[j,0]) ** 2) +
                         ((X[i,1] - X[j,1]) ** 2)))
-
             eucl_dist.sort()
             kn_distance.append(eucl_dist[k])
         plt.hist(kn_distance, bins = 50)
@@ -106,15 +96,20 @@ class fraudDetection:
     def test(self, labels):
         """
             test accuracy of clustering model
+
+            Labels DBscan -- -1 = outlier, X
         """
         print("-"*20)
         TN = 0
         FN = 0
         TP = 0
         FP = 0
-        for i in range(len(self.df)):
+        for i, v in enumerate(labels):
             lst = self.df.iloc[i].to_list()
-            if labels[i] != -1: # if instance is not outlier and fraud
+            # print(lst)
+            # print("index", i, "\tvalue:", v)
+            # break
+            if v != -1: # if instance is not outlier and fraud
                 if lst[-1] == 0.0: #if not actual fraud
                     TN += 1
                 else:
@@ -124,7 +119,7 @@ class fraudDetection:
                     TP += 1
                 else:
                     FP += 1
-        print("Positive indicates Spam, negative indicates Ham")
+        print("Positive indicates Fraud, negative indicates not Fraud")
         print("-"*20)
         print("True Positive:", TP)
         print("False Positive:", FP)
