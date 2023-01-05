@@ -31,7 +31,6 @@ class fraudDetection:
         self.cleaneDf = self.df.drop(["Class"], axis = 1)
         self.cleaneDf = self.cleaneDf.drop(["Time"], axis = 1)
         self.cleaneDf = self.cleaneDf.drop(["Amount"], axis = 1)
-        print(self.cleaneDf.columns)
 
     def plotKDistanceGraph(self, X, k):
         """
@@ -70,11 +69,22 @@ class fraudDetection:
         """
             https://scikit-learn.org/stable/auto_examples/preprocessing/plot_all_scaling.html
             Robust scaler is not sensitive to outliers but not better anyway
+            qcut and cut into intervals and then into ints didnt help with seg fault on big data
         """
         pass
+        # discretize
+        # for column in self.downsampledData.columns:
+        #     if column == "Class":
+        #         continue
+        #     # self.downsampledData.sort_values(column)
+        #     # self.downsampledData[column] = pd.qcut(self.downsampledData[column], q = 20).cat.codes
+        #     self.downsampledData[column] = pd.cut(self.downsampledData[column], bins = 20).cat.codes
+        # self.downsampledData.astype('int32')
+
+        # standardization
         # rs = preprocessing.RobustScaler()
-        # tempArray = rs.fit_transform(self.cleaneDf) # returns numpy array
-        # self.cleaneDf = pd.DataFrame(tempArray, index = self.cleaneDf.index, columns = self.cleaneDf.columns)
+        # tempArray = rs.fit_transform(self.downsampledData) # returns numpy array
+        # self.downsampledData = pd.DataFrame(tempArray, index = self.downsampledData.index, columns = self.downsampledData.columns)
 
     def testClusterModel(self, distance, minSampleSize, data):
         """
@@ -104,8 +114,6 @@ class fraudDetection:
         FP = 0
         for i, v in enumerate(labels):
             instance = data.iloc[i]
-            # print(instance)
-            # break
             if v != -1: # if instance is not outlier and fraud
                 if instance[-1] == 0.0: #if not actual fraud
                     TN += 1
@@ -124,8 +132,11 @@ class fraudDetection:
         print("False Negative:", FN)
         print("Total Amount:", TP+FP+TN+FN)
         print("-"*20)
-        print("Precision:", TP / (TP + FP))
-        print("Recall:", TP / (TP + FN))
+        precision = TP / (TP + FP)
+        recall = TP / (TP + FN)
+        print("Precision:", precision)
+        print("Recall:", recall)
+        print("F1 score:", 2 * (precision * recall) / (precision+recall) )
         print("Accuracy:", (TP + TN) / (TP + FP + FN + TN))
         self.printConfusionMatrix(TP, FP, TN, FN)
 
@@ -147,7 +158,7 @@ def main():
     fraudDe.clean()
     fraudDe.downSample(length = 20000)
     fraudDe.preprocess()
-    fraudDe.testClusterModel(distance = 5, minSampleSize = 10, data = fraudDe.downsampledData)
+    fraudDe.testClusterModel(distance = 7, minSampleSize = 200, data = fraudDe.downsampledData)
     # fraudDe.testClusterModel(distance = 5, minSampleSize = 10, data = fraudDe.cleaneDf[:20000])
     # fraudDe.plotKDistanceGraph(fraudDe.cleaneDf[:1000].to_numpy(), 20)
 
