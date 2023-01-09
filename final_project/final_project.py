@@ -7,15 +7,18 @@ import seaborn as sns
 from sklearn.cluster import DBSCAN
 from sklearn import preprocessing
 from sklearn.utils import resample
+from sklearn.neighbors import NearestNeighbors
 sns.set_theme()
 
 class fraudDetection:
     def __init__(self):
         df = pd.DataFrame()
         return
+
     def readData(self, data = "dataset/creditcard.csv"):
         self.df = pd.read_csv(data, header=None, dtype= np.float64)
         return
+
     def setHeader(self, headerSrc = "dataset/creditcard.header"):
         header = ""
         with open(headerSrc) as f:
@@ -25,6 +28,7 @@ class fraudDetection:
             header[i] = header[i].strip(',')
         self.df.columns = header
         return
+
     def clean(self):
         self.df.dropna()
         self.df = self.df.drop_duplicates()
@@ -94,12 +98,19 @@ class fraudDetection:
             DBSCAN desc: https://towardsdatascience.com/how-dbscan-works-and-why-should-i-use-it-443b4a191c80
         """
         dbscanModel = DBSCAN(eps = distance, min_samples=minSampleSize)
+        TN = 0
+        FN = 0
+        TP = 0
+        FP = 0
+
         if "Class" in data.columns: # if running with downsampledData and all fraud instances
             dbscanModel.fit(data.loc[:, data.columns != "Class"])
-            self.test(dbscanModel.labels_, data)
+            TP, FP, TN, FN = self.test(dbscanModel.labels_, data)
         else: # if running with cleaneDf[:length]
             dbscanModel.fit(data)
-            self.test(dbscanModel.labels_, self.df)
+            TP, FP, TN, FN = self.test(dbscanModel.labels_, self.df)
+
+        return TP, FP, TN, FN
 
     def test(self, labels, data):
         """
@@ -107,7 +118,6 @@ class fraudDetection:
 
             Labels DBscan: -1 = outlier, all other numbers belongs to cluster
         """
-        print("-"*20)
         TN = 0
         FN = 0
         TP = 0
@@ -124,6 +134,9 @@ class fraudDetection:
                     TP += 1
                 else:
                     FP += 1
+        return TP, FP, TN, FN
+
+    def printStatistics(self, TP, FP, TN, FN):
         print("Positive indicates Fraud, negative indicates not Fraud")
         print("-"*20)
         print("True Positive:", TP)
@@ -132,13 +145,12 @@ class fraudDetection:
         print("False Negative:", FN)
         print("Total Amount:", TP+FP+TN+FN)
         print("-"*20)
+        print("Accuracy:", (TP + TN) / (TP + FP + FN + TN))
+        print("Precision:", TP / (TP + FP))
+        print("Recall:", TP / (TP + FN))
         precision = TP / (TP + FP)
         recall = TP / (TP + FN)
-        print("Precision:", precision)
-        print("Recall:", recall)
-        print("F1 score:", 2 * (precision * recall) / (precision+recall) )
-        print("Accuracy:", (TP + TN) / (TP + FP + FN + TN))
-        self.printConfusionMatrix(TP, FP, TN, FN)
+        print("F1-Score: ", 2 * (precision * recall)/(precision + recall))
 
     def printConfusionMatrix(self, TP, FP, TN, FN):
         """ page 54 in the course book
@@ -151,6 +163,53 @@ class fraudDetection:
         print(f"\t\t\t{TP+FP}\t\t{FN+TN}\t\t{TP+TN+FN+FP}")
         print("-"*60)
 
+    def elbowMethod(self):
+        # https://towardsdatascience.com/explaining-dbscan-clustering-18eaf5c83b31
+        nbrs = NearestNeighbors(n_neighbors=2).fit(self.df)
+        neigh_dist, neigh_ind = nbrs.kneighbors(self.df)
+        sort_neigh_dist = np.sort(neigh_dist, axis=0)
+
+        k_dist = sort_neigh_dist[:]
+        plt.plot(k_dist)
+        plt.axhline(y=150, linewidth=1, linestyle='dashed', color='k')
+        plt.axhline(y=350, linewidth=1, linestyle='dashed', color='k')
+        plt.ylabel("k-NN distance")
+        plt.xlabel("Sorted observations (4th NN)")
+        plt.show()
+
+def test_SampleSize():
+    """Test for best distance for the given sampleSizes that could be read using the elbow method."""
+    fraudDe = fraudDetection()
+    fraudDe.readData()
+    fraudDe.setHeader()
+    for j in [150, 200, 250, 300, 350]:
+        for i in range(2, 12):
+            print(f"i = {i}, j = {j}")
+            TP = []
+            FP = []
+            TN = []
+            FN = []
+            for y in range(20):
+                fraudDe.downSample(length = 20000)
+                tp, fp, tn, fn = fraudDe.testClusterModel(distance = i, minSampleSize = j, data = fraudDe.downsampledData)
+                TP.append(tp)
+                FP.append(fp)
+                TN.append(tn)
+                FN.append(fn)
+            with open(f"test_SampleSize_{j}.txt", "a") as f:
+                f.write("-"*30 + f"\nDistance: {str(i)}\nSample Size: {j} \n\nTP:\n")
+                for tp in TP:
+                    f.write(str(tp) + "\n")
+                f.write("FP:\n")
+                for fp in FP:
+                    f.write(str(fp) + "\n")
+                f.write("TN:\n")
+                for tn in TN:
+                    f.write(str(tn) + "\n")
+                f.write("FN:\n")
+                for fn in FN:
+                    f.write(str(fn) + "\n")
+
 def main():
     fraudDe = fraudDetection()
     fraudDe.readData()
@@ -158,8 +217,8 @@ def main():
     fraudDe.clean()
     fraudDe.downSample(length = 20000)
     fraudDe.preprocess()
-    fraudDe.testClusterModel(distance = 7, minSampleSize = 200, data = fraudDe.downsampledData)
-    # fraudDe.testClusterModel(distance = 5, minSampleSize = 10, data = fraudDe.cleaneDf[:20000])
-    # fraudDe.plotKDistanceGraph(fraudDe.cleaneDf[:1000].to_numpy(), 20)
+    tp, fp, tn, fn = fraudDe.testClusterModel(distance = 7, minSampleSize = 200, data = fraudDe.downsampledData)
+    fraudDe.printStatistics(tp, fp, tn, fn)
+    fraudDe.printConfusionMatrix(tp, fp, tn, fn)
 
 main()
