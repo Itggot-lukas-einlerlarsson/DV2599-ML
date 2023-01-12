@@ -76,14 +76,14 @@ class fraudDetection:
             qcut and cut into intervals and then into ints didnt help with seg fault on big data
         """
         pass
-        # discretize
+        ##discretize
         # for column in self.downsampledData.columns:
         #     if column == "Class":
         #         continue
         #     # self.downsampledData.sort_values(column)
         #     # self.downsampledData[column] = pd.qcut(self.downsampledData[column], q = 20).cat.codes
         #     self.downsampledData[column] = pd.cut(self.downsampledData[column], bins = 20).cat.codes
-        # self.downsampledData.astype('int32')
+        # self.downsampledData = self.downsampledData.astype('int32')
 
         # standardization
         # rs = preprocessing.RobustScaler()
