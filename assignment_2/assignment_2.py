@@ -117,6 +117,8 @@ class spamDetection:
 
         # run test to see if there is difference between the algorithms performance
         ranks = self.get_friedmanRanks(accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes)
+        self.printAccuracyTable(np.array(accuracy_kNN), np.array(accuracy_SVM), np.array(accuracy_NaiveBayes), ranks)
+        self.printFriedmanTable(np.array(accuracy_kNN), np.array(accuracy_SVM), np.array(accuracy_NaiveBayes), ranks)
         self.printTable(np.array(accuracy_kNN), np.array(accuracy_SVM), np.array(accuracy_NaiveBayes), ranks)
         mean_TOTrank, sum_squaredDiff, sum_squaredDiff_nk, mean_ranks = self.run_FriedmanTest(ranks)
         CV = self.run_calcCriticalValue(k = 3, n = 10, siglevel = 0.05)
@@ -171,16 +173,10 @@ class spamDetection:
         2) The sum of square differences, measuring the spread of rank centroids
         3) The sum of square differences, measuring the spread of all rank
         """
-        print()
-        print("-" * 60)
-        print("\t\tkNN\t\tSVM\t\tNaive Bayes")
-        print("-" * 60)
-        # Friedman: Average rank
         mean_kNNrank = ranks["kNN"].mean() # 2.1
         mean_SVMrank = ranks["SVM"].mean() # 1.6
         mean_NaiveBayesrank = ranks["NaiveBayes"].mean() # 2.3
         mean_ranks = [mean_kNNrank, mean_SVMrank, mean_NaiveBayesrank]
-        print(f"avg rank\t{mean_kNNrank}\t\t{mean_SVMrank}\t\t{mean_NaiveBayesrank}")
         mean_TOTrank = (k+1)/2 # 1)
 
         # sum of squared differences # 2)
@@ -195,8 +191,7 @@ class spamDetection:
             sum_squaredDiff_nk += (ranks["SVM"][i] - mean_TOTrank)**2
             sum_squaredDiff_nk += (ranks["NaiveBayes"][i] - mean_TOTrank)**2
         sum_squaredDiff_nk *= 1/(len(ranks["kNN"])*(len(ranks)-1))
-
-        print("-" * 60)
+        print("\n\nFriedman test:")
         print("avg total rank:", mean_TOTrank)
         print("the sum of squared differences(spread of rank centroids):", sum_squaredDiff)
         print("the sum of squared differences nk(spread over all ranks):", sum_squaredDiff_nk)
@@ -232,12 +227,11 @@ class spamDetection:
         else:
             print(f"There is no significant difference between the algorithms")
 
-
-
-    def printTable(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, ranks):
+    def printAccuracyTable(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, ranks):
         """ Page 350.
-            printing a table similar to the figure 12.4( and 12.8) in the course book
+            printing a table similar to the figure 12.4 in the course book
         """
+        print("\nFigure 12.4:")
         print("-" * 60)
         print("Fold\t\tkNN\t\tSVM\t\tNaive Bayes")
         print("-" * 60)
@@ -250,19 +244,66 @@ class spamDetection:
             print(np.round(accuracy_kNN[i], 5), end = "\t\t")
             print(np.round(accuracy_SVM[i], 5),end = "\t\t")
             print(np.round(accuracy_NaiveBayes[i], 5))
-            print(end = "  F-score:\t")
-            print(np.round(self.kNNFscore[i], 5), end = "\t\t")
-            print(np.round(self.SVMFscore[i], 5), end = "\t\t")
-            print(np.round(self.NaiveBayesFscore[i], 5))
-            print(f"  Time(ms):", end ="\t")
-            print(f"{millisecondsFromTimedelta(self.kNNtime[i+1])}\t\t{millisecondsFromTimedelta(self.SVMtime[i+1])}\t\t{millisecondsFromTimedelta(self.NaiveBayestime[i+1])}")
-            print(end = "  Ranks:\t")
-            print(ranks["kNN"][i], end = "\t\t")
-            print(ranks["SVM"][i], end = "\t\t")
-            print(ranks["NaiveBayes"][i], end = "\n"*2)
         print("-" * 60)
         print(f"avg accuracy\t{np.round(accuracy_kNN.mean(), 5)}\t\t{np.round(accuracy_SVM.mean(), 5)}\t\t{np.round(accuracy_NaiveBayes.mean(), 5)}")
         print(f"stdev\t\t{np.round(accuracy_kNN.std(), 5)}\t\t{np.round(accuracy_SVM.std(), 5)}\t\t{np.round(accuracy_NaiveBayes.std(), 5)}")
+        print("-" * 60)
+
+
+    def printFriedmanTable(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, ranks):
+        """ Page 356.
+            printing a table similar to the figure 12.8 in the course book
+        """
+        print("\n\nFigure 12.8:")
+        print("-" * 60)
+        print("Fold\t\tkNN\t\tSVM\t\tNaive Bayes")
+        print("-" * 60)
+        np.set_printoptions(precision=5)
+        self.kNNFscore = np.array(self.kNNFscore)
+        self.SVMFscore = np.array(self.SVMFscore)
+        self.NaiveBayesFscore = np.array(self.NaiveBayesFscore)
+        for i in range(len(accuracy_kNN)):
+            print(i+1, end = " Accuracy:\t")
+            print(np.round(accuracy_kNN[i], 5), ranks["kNN"][i], end = "\t")
+            print(np.round(accuracy_SVM[i], 5), ranks["SVM"][i], end = "\t")
+            print(np.round(accuracy_NaiveBayes[i], 5), ranks["NaiveBayes"][i])
+        mean_kNNrank = ranks["kNN"].mean()
+        mean_SVMrank = ranks["SVM"].mean()
+        mean_NaiveBayesrank = ranks["NaiveBayes"].mean()
+        print("-" * 60)
+        print(f"avg rank\t{mean_kNNrank}\t\t{mean_SVMrank}\t\t{mean_NaiveBayesrank}")
+        print("-" * 60)
+
+
+    def printTable(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, ranks):
+        """
+            Prints the rest of the measurements
+        """
+        print("\n\nEvaluation Measurements:")
+        print("-" * 60)
+        print("Fold\t\tkNN\t\tSVM\t\tNaive Bayes")
+        print("-" * 60)
+        np.set_printoptions(precision=5)
+        self.kNNFscore = np.array(self.kNNFscore)
+        self.SVMFscore = np.array(self.SVMFscore)
+        self.NaiveBayesFscore = np.array(self.NaiveBayesFscore)
+        for i in range(len(accuracy_kNN)):
+            print("Fold:", i+1)
+            print("Time(ms):", end ="\t")
+            print(f"{millisecondsFromTimedelta(self.kNNtime[i+1])}\t\t{millisecondsFromTimedelta(self.SVMtime[i+1])} \t{millisecondsFromTimedelta(self.NaiveBayestime[i+1])}")
+            print(end = "Accuracy:\t")
+            print(np.round(accuracy_kNN[i], 5), end = "\t\t")
+            print(np.round(accuracy_SVM[i], 5),end = "\t\t")
+            print(np.round(accuracy_NaiveBayes[i], 5))
+            print(end = "F-score:\t")
+            print(np.round(self.kNNFscore[i], 5), end = "\t\t")
+            print(np.round(self.SVMFscore[i], 5), end = "\t\t")
+            print(np.round(self.NaiveBayesFscore[i], 5))
+            # print(end = "  Ranks:\t")
+            # print(ranks["kNN"][i], end = "\t\t")
+            # print(ranks["SVM"][i], end = "\t\t")
+            # print(ranks["NaiveBayes"][i], end = "\n"*2)
+            print("-" * 30)
 
 def millisecondsFromTimedelta(timedelta, digits = 6):
     """Compute the milliseconds in a timedelta"""
