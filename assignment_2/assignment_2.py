@@ -19,9 +19,9 @@ class spamDetection:
     def __init__(self):
         df = pd.DataFrame()
         trainingSet = pd.DataFrame()
-        self.kNNtime = timedelta(0, 0, 0)
-        self.SVMtime = timedelta(0, 0, 0)
-        self.NaiveBayestime = timedelta(0, 0, 0)
+        self.kNNtime = {}
+        self.SVMtime = {}
+        self.NaiveBayestime = {}
         self.kNNFscore = []
         self.SVMFscore = []
         self.NaiveBayesFscore = []
@@ -60,7 +60,7 @@ class spamDetection:
         spamDict["feature_names"] = np.array(self.df.columns.to_list()[:-1])
         self.spamDict = spamDict
 
-    def run_kNNclassifier(self, n_neighbors, X_train, X_test, y_train, y_test):
+    def run_kNNclassifier(self, n_neighbors, X_train, X_test, y_train, y_test, foldNr):
         kNNmodel = KNeighborsClassifier(n_neighbors)
         startTime = time.time()
         kNNmodel.fit(X_train, y_train)
@@ -68,10 +68,10 @@ class spamDetection:
         accuracy = kNNmodel.score(X_test, y_test)
         y_pred = kNNmodel.predict(X_test)
         self.kNNFscore.append(f1_score(y_test, y_pred))
-        self.kNNtime += timedelta(seconds=endTime - startTime)
+        self.kNNtime[foldNr] = timedelta(seconds=endTime - startTime)
         return accuracy
 
-    def run_SVMclassifier(self, X_train, X_test, y_train, y_test):
+    def run_SVMclassifier(self, X_train, X_test, y_train, y_test, foldNr):
         SVMmodel = SVC()
         startTime = time.time()
         SVMmodel.fit(X_train, y_train)
@@ -79,11 +79,11 @@ class spamDetection:
         accuracy = SVMmodel.score(X_test, y_test)
         y_pred = SVMmodel.predict(X_test)
         self.SVMFscore.append(f1_score(y_test, y_pred))
-        self.SVMtime += timedelta(seconds=endTime - startTime)
+        self.SVMtime[foldNr] = timedelta(seconds=endTime - startTime)
         return accuracy
 
 
-    def run_NaiveBayesClassifier(self, X_train, X_test, y_train, y_test):
+    def run_NaiveBayesClassifier(self, X_train, X_test, y_train, y_test, foldNr):
         NBmodel = ComplementNB()
         startTime = time.time()
         NBmodel.fit(X_train, y_train)
@@ -91,7 +91,7 @@ class spamDetection:
         accuracy = NBmodel.score(X_test, y_test)
         y_pred = NBmodel.predict(X_test)
         self.NaiveBayesFscore.append(f1_score(y_test, y_pred))
-        self.NaiveBayestime += timedelta(seconds=endTime - startTime)
+        self.NaiveBayestime[foldNr] = timedelta(seconds=endTime - startTime)
         return accuracy
 
 
@@ -110,9 +110,9 @@ class spamDetection:
             print("training... foldnr:", foldnr)
             X_train, X_test = X[train_index], X[test_index]
             y_train, y_test = y[train_index], y[test_index]
-            accuracy_kNN.append(self.run_kNNclassifier(20, X_train, X_test, y_train, y_test))
-            accuracy_SVM.append(self.run_SVMclassifier(X_train, X_test, y_train, y_test))
-            accuracy_NaiveBayes.append(self.run_NaiveBayesClassifier(X_train, X_test, y_train, y_test))
+            accuracy_kNN.append(self.run_kNNclassifier(20, X_train, X_test, y_train, y_test, foldnr))
+            accuracy_SVM.append(self.run_SVMclassifier(X_train, X_test, y_train, y_test, foldnr))
+            accuracy_NaiveBayes.append(self.run_NaiveBayesClassifier(X_train, X_test, y_train, y_test, foldnr))
             foldnr += 1
 
         # run test to see if there is difference between the algorithms performance
@@ -234,7 +234,7 @@ class spamDetection:
 
 
 
-    def printTable(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, ranks = None):
+    def printTable(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, ranks):
         """ Page 350.
             printing a table similar to the figure 12.4( and 12.8) in the course book
         """
@@ -254,18 +254,19 @@ class spamDetection:
             print(np.round(self.kNNFscore[i], 5), end = "\t\t")
             print(np.round(self.SVMFscore[i], 5), end = "\t\t")
             print(np.round(self.NaiveBayesFscore[i], 5))
-            print(end = "  ranks:\t")
+            print(f"  Time(ms):", end ="\t")
+            print(f"{millisecondsFromTimedelta(self.kNNtime[i+1])}\t\t{millisecondsFromTimedelta(self.SVMtime[i+1])}\t\t{millisecondsFromTimedelta(self.NaiveBayestime[i+1])}")
+            print(end = "  Ranks:\t")
             print(ranks["kNN"][i], end = "\t\t")
-            print(ranks["SVM"][i],end = "\t\t")
-            print(ranks["NaiveBayes"][i])
-
-
-
+            print(ranks["SVM"][i], end = "\t\t")
+            print(ranks["NaiveBayes"][i], end = "\n"*2)
         print("-" * 60)
         print(f"avg accuracy\t{np.round(accuracy_kNN.mean(), 5)}\t\t{np.round(accuracy_SVM.mean(), 5)}\t\t{np.round(accuracy_NaiveBayes.mean(), 5)}")
         print(f"stdev\t\t{np.round(accuracy_kNN.std(), 5)}\t\t{np.round(accuracy_SVM.std(), 5)}\t\t{np.round(accuracy_NaiveBayes.std(), 5)}")
-        print(f"learning time\t{self.kNNtime}\t{self.SVMtime}\t{self.NaiveBayestime}")
 
+def millisecondsFromTimedelta(timedelta, digits = 6):
+    """Compute the milliseconds in a timedelta"""
+    return round(timedelta.total_seconds() * 1000, ndigits = digits)
 
 
 def main():
