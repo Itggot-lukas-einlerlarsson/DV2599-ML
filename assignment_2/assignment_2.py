@@ -19,9 +19,9 @@ class spamDetection:
     def __init__(self):
         df = pd.DataFrame()
         trainingSet = pd.DataFrame()
-        self.kNNtime = {}
-        self.SVMtime = {}
-        self.NaiveBayestime = {}
+        self.kNNtime = []
+        self.SVMtime = []
+        self.NaiveBayestime = []
         self.kNNFscore = []
         self.SVMFscore = []
         self.NaiveBayesFscore = []
@@ -68,7 +68,7 @@ class spamDetection:
         accuracy = kNNmodel.score(X_test, y_test)
         y_pred = kNNmodel.predict(X_test)
         self.kNNFscore.append(f1_score(y_test, y_pred))
-        self.kNNtime[foldNr] = timedelta(seconds=endTime - startTime)
+        self.kNNtime.append(timedelta(seconds=endTime - startTime))
         return accuracy
 
     def run_SVMclassifier(self, X_train, X_test, y_train, y_test, foldNr):
@@ -79,7 +79,7 @@ class spamDetection:
         accuracy = SVMmodel.score(X_test, y_test)
         y_pred = SVMmodel.predict(X_test)
         self.SVMFscore.append(f1_score(y_test, y_pred))
-        self.SVMtime[foldNr] = timedelta(seconds=endTime - startTime)
+        self.SVMtime.append(timedelta(seconds=endTime - startTime))
         return accuracy
 
 
@@ -91,7 +91,7 @@ class spamDetection:
         accuracy = NBmodel.score(X_test, y_test)
         y_pred = NBmodel.predict(X_test)
         self.NaiveBayesFscore.append(f1_score(y_test, y_pred))
-        self.NaiveBayestime[foldNr] = timedelta(seconds=endTime - startTime)
+        self.NaiveBayestime.append(timedelta(seconds=endTime - startTime))
         return accuracy
 
 
@@ -115,24 +115,41 @@ class spamDetection:
             accuracy_NaiveBayes.append(self.run_NaiveBayesClassifier(X_train, X_test, y_train, y_test, foldnr))
             foldnr += 1
 
-        # run test to see if there is difference between the algorithms performance
-        ranks = self.get_friedmanRanks(accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes)
-        self.printAccuracyTable(np.array(accuracy_kNN), np.array(accuracy_SVM), np.array(accuracy_NaiveBayes), ranks)
-        self.printFriedmanTable(np.array(accuracy_kNN), np.array(accuracy_SVM), np.array(accuracy_NaiveBayes), ranks)
-        self.printTable(np.array(accuracy_kNN), np.array(accuracy_SVM), np.array(accuracy_NaiveBayes), ranks)
-        mean_TOTrank, sum_squaredDiff, sum_squaredDiff_nk, mean_ranks = self.run_FriedmanTest(ranks)
+        # run test to see if there is difference between the algorithms measurements
+        # Accuracy
+        print("\n\n\n",30 * "-", " Accuracy ", 37 * "-", end = "")
+        self.run_friedmanTest(accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, "Accuracy")
+
+        #Time
+        print("\n\n\n",30 * "-", " Time(ms) ", 37 * "-", end = "")
+        for i in range(len(self.kNNtime)):
+            self.kNNtime[i] = millisecondsFromTimedelta(self.kNNtime[i], 5)
+            self.SVMtime[i] = millisecondsFromTimedelta(self.SVMtime[i], 5)
+            self.NaiveBayestime[i] = millisecondsFromTimedelta(self.NaiveBayestime[i], 5)
+        self.run_friedmanTest(self.kNNtime, self.SVMtime, self.NaiveBayestime, "Time(ms)")
+
+        #F1-score
+        print("\n\n\n",30 * "-", " F1-score ", 37 * "-", end = "")
+        self.run_friedmanTest(self.kNNFscore, self.SVMFscore, self.NaiveBayesFscore, "F1-score")
+
+
+    def run_friedmanTest(self, kNN_data, SVM_data, naiveBayes_data, measurement):
+        ranks = self.get_friedmanRanks(kNN_data, SVM_data, naiveBayes_data, measurement)
+        self.printMeasurementTable(np.array(kNN_data), np.array(SVM_data), np.array(naiveBayes_data), ranks, measurement)
+        self.printFriedmanTable(np.array(kNN_data), np.array(SVM_data), np.array(naiveBayes_data), ranks, measurement)
+        mean_TOTrank, sum_squaredDiff, sum_squaredDiff_nk, mean_ranks = self.get_FriedmanTestMeasurements(ranks)
         CV = self.run_calcCriticalValue(k = 3, n = 10, siglevel = 0.05)
 
         #see if significant difference
-        if sum_squaredDiff > CV:
-            print(f"Friedman Test: There is a significant difference between the algorithms, {sum_squaredDiff} > {CV}")
+        if sum_squaredDiff/sum_squaredDiff_nk > CV:
+            print(f"Friedman Test: There is a significant difference between the algorithms, {sum_squaredDiff}/{sum_squaredDiff_nk} > {CV}")
             print("Running running Nemeyi test:", end = " ")
             self.run_nemenyiTest(mean_ranks)
         else:
-            print("Friedman Test: There is no significant difference between the algorithms")
+            print("Friedman Test: There is no significant difference between the algorithms when it comes to: " + measurement)
 
 
-    def get_friedmanRanks(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, k = 3):
+    def get_friedmanRanks(self, data_kNN, data_SVM, data_NaiveBayes, measurementStr):
         """ Page 355, 356 in the course book
             idea: rank the performance of all k algorithms per data set
             from best performance (rank 1) to worst (rank k)
@@ -145,14 +162,17 @@ class spamDetection:
         ranks_kNN = []
         ranks_SVM = []
         ranks_NaiveBayes = []
-        for i in range(len(accuracy_kNN)):
-            accuracies = []
-            accuracies.append((accuracy_kNN[i], "kNN"))
-            accuracies.append((accuracy_SVM[i], "SVM"))
-            accuracies.append((accuracy_NaiveBayes[i], "NaiveBayes"))
-            accuracies = sorted(accuracies, reverse=True)
+        for i in range(len(data_kNN)):
+            measurement = []
+            measurement.append((data_kNN[i], "kNN"))
+            measurement.append((data_SVM[i], "SVM"))
+            measurement.append((data_NaiveBayes[i], "NaiveBayes"))
+            if "Time" in measurementStr :
+                measurement = sorted(measurement, reverse=False)
+            else:
+                measurement = sorted(measurement, reverse=True)
             rank = 1
-            for value in accuracies:
+            for value in measurement:
                 if value[1] == "kNN":
                     ranks_kNN.append(rank)
                 if value[1] == "SVM":
@@ -166,7 +186,7 @@ class spamDetection:
         ranks["NaiveBayes"] = np.array(ranks_NaiveBayes)
         return ranks
 
-    def run_FriedmanTest(self, ranks, k = 3):
+    def get_FriedmanTestMeasurements(self, ranks, k = 3):
         """ page 355
         This Function calculates the three points from the course book:
         1) The average rank
@@ -191,7 +211,7 @@ class spamDetection:
             sum_squaredDiff_nk += (ranks["SVM"][i] - mean_TOTrank)**2
             sum_squaredDiff_nk += (ranks["NaiveBayes"][i] - mean_TOTrank)**2
         sum_squaredDiff_nk *= 1/(len(ranks["kNN"])*(len(ranks)-1))
-        print("\n\nFriedman test:")
+        print("\nFriedman test:")
         print("avg total rank:", mean_TOTrank)
         print("the sum of squared differences(spread of rank centroids):", sum_squaredDiff)
         print("the sum of squared differences nk(spread over all ranks):", sum_squaredDiff_nk)
@@ -215,95 +235,56 @@ class spamDetection:
         CD = p_sigLevel * math.sqrt( (k*(k+1))/(6*n) )
         mean_ranks = sorted(mean_ranks)
         criticalDifferenceAlgorithms = [] # holds all algorithm's that have a critical difference
-        if max(mean_ranks) - min(mean_ranks) > CD:
-            str(criticalDifferenceAlgorithms.append(max(mean_ranks)))
-            str(criticalDifferenceAlgorithms.append(min(mean_ranks)))
-            if mean_ranks[1] - mean_ranks[0] > CD:
-                str(criticalDifferenceAlgorithms.append(mean_ranks[1]))
+        if abs(max(mean_ranks) - min(mean_ranks)) > CD:
+            criticalDifferenceAlgorithms.append(max(mean_ranks))
+            criticalDifferenceAlgorithms.append(min(mean_ranks))
+            if abs(mean_ranks[1] - mean_ranks[0]) > CD:
+                criticalDifferenceAlgorithms.append(mean_ranks[1])
             if mean_ranks[1] not in criticalDifferenceAlgorithms:
-                if mean_ranks[2] - mean_ranks[1] > CD:
-                    str(criticalDifferenceAlgorithms.append(mean_ranks[1]))
+                if abs(mean_ranks[2] - mean_ranks[1]) > CD:
+                    criticalDifferenceAlgorithms.append(mean_ranks[1])
             print(f"There is a significant difference between the algorithms with average ranks: ",criticalDifferenceAlgorithms)
         else:
             print(f"There is no significant difference between the algorithms")
 
-    def printAccuracyTable(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, ranks):
+    def printMeasurementTable(self, data_kNN, data_SVM, data_NaiveBayes, ranks, measurement):
         """ Page 350.
             printing a table similar to the figure 12.4 in the course book
         """
         print("\nFigure 12.4:")
-        print("-" * 60)
-        print("Fold\t\tkNN\t\tSVM\t\tNaive Bayes")
-        print("-" * 60)
-        np.set_printoptions(precision=5)
-        self.kNNFscore = np.array(self.kNNFscore)
-        self.SVMFscore = np.array(self.SVMFscore)
-        self.NaiveBayesFscore = np.array(self.NaiveBayesFscore)
-        for i in range(len(accuracy_kNN)):
-            print(i+1, end = " Accuracy:\t")
-            print(np.round(accuracy_kNN[i], 5), end = "\t\t")
-            print(np.round(accuracy_SVM[i], 5),end = "\t\t")
-            print(np.round(accuracy_NaiveBayes[i], 5))
-        print("-" * 60)
-        print(f"avg accuracy\t{np.round(accuracy_kNN.mean(), 5)}\t\t{np.round(accuracy_SVM.mean(), 5)}\t\t{np.round(accuracy_NaiveBayes.mean(), 5)}")
-        print(f"stdev\t\t{np.round(accuracy_kNN.std(), 5)}\t\t{np.round(accuracy_SVM.std(), 5)}\t\t{np.round(accuracy_NaiveBayes.std(), 5)}")
-        print("-" * 60)
+        print("-" * 80)
+        print("Fold\t\tkNN\t\t\tSVM\t\t\tNaive Bayes")
+        print("-" * 80)
+        for i in range(len(data_kNN)):
+            print(i+1, end = " " + measurement + "\t")
+            print(np.round(data_kNN[i], 5), end = "\t\t\t")
+            print(np.round(data_SVM[i], 5),end = "\t\t\t")
+            print(np.round(data_NaiveBayes[i], 5))
+        print("-" * 80)
+        print("avg " + measurement + f"\t{np.round(data_kNN.mean(), 5)}\t\t\t{np.round(data_SVM.mean(), 5)}\t\t\t{np.round(data_NaiveBayes.mean(), 5)}")
+        print(f"stdev\t\t{np.round(data_kNN.std(), 5)}\t\t\t{np.round(data_SVM.std(), 5)}\t\t\t{np.round(data_NaiveBayes.std(), 5)}")
+        print("-" * 80)
 
 
-    def printFriedmanTable(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, ranks):
+    def printFriedmanTable(self, data_kNN, data_SVM, data_NaiveBayes, ranks, measurement):
         """ Page 356.
             printing a table similar to the figure 12.8 in the course book
         """
         print("\n\nFigure 12.8:")
-        print("-" * 60)
-        print("Fold\t\tkNN\t\tSVM\t\tNaive Bayes")
-        print("-" * 60)
-        np.set_printoptions(precision=5)
-        self.kNNFscore = np.array(self.kNNFscore)
-        self.SVMFscore = np.array(self.SVMFscore)
-        self.NaiveBayesFscore = np.array(self.NaiveBayesFscore)
-        for i in range(len(accuracy_kNN)):
-            print(i+1, end = " Accuracy:\t")
-            print(np.round(accuracy_kNN[i], 5), ranks["kNN"][i], end = "\t")
-            print(np.round(accuracy_SVM[i], 5), ranks["SVM"][i], end = "\t")
-            print(np.round(accuracy_NaiveBayes[i], 5), ranks["NaiveBayes"][i])
+        print("-" * 80)
+        print("Fold\t\tkNN\t\t\tSVM\t\t\tNaive Bayes")
+        print("-" * 80)
+        for i in range(len(data_kNN)):
+            print(i+1, end = " " + measurement + "\t")
+            print(np.round(data_kNN[i], 5),ranks["kNN"][i] ,end = "\t\t")
+            print(np.round(data_SVM[i], 5),ranks["SVM"][i] ,end = "\t\t")
+            print(np.round(data_NaiveBayes[i], 5),ranks["NaiveBayes"][i])
         mean_kNNrank = ranks["kNN"].mean()
         mean_SVMrank = ranks["SVM"].mean()
         mean_NaiveBayesrank = ranks["NaiveBayes"].mean()
-        print("-" * 60)
-        print(f"avg rank\t{mean_kNNrank}\t\t{mean_SVMrank}\t\t{mean_NaiveBayesrank}")
-        print("-" * 60)
-
-
-    def printTable(self, accuracy_kNN, accuracy_SVM, accuracy_NaiveBayes, ranks):
-        """
-            Prints the rest of the measurements
-        """
-        print("\n\nEvaluation Measurements:")
-        print("-" * 60)
-        print("Fold\t\tkNN\t\tSVM\t\tNaive Bayes")
-        print("-" * 60)
-        np.set_printoptions(precision=5)
-        self.kNNFscore = np.array(self.kNNFscore)
-        self.SVMFscore = np.array(self.SVMFscore)
-        self.NaiveBayesFscore = np.array(self.NaiveBayesFscore)
-        for i in range(len(accuracy_kNN)):
-            print("Fold:", i+1)
-            print("Time(ms):", end ="\t")
-            print(f"{millisecondsFromTimedelta(self.kNNtime[i+1])}\t\t{millisecondsFromTimedelta(self.SVMtime[i+1])} \t{millisecondsFromTimedelta(self.NaiveBayestime[i+1])}")
-            print(end = "Accuracy:\t")
-            print(np.round(accuracy_kNN[i], 5), end = "\t\t")
-            print(np.round(accuracy_SVM[i], 5),end = "\t\t")
-            print(np.round(accuracy_NaiveBayes[i], 5))
-            print(end = "F-score:\t")
-            print(np.round(self.kNNFscore[i], 5), end = "\t\t")
-            print(np.round(self.SVMFscore[i], 5), end = "\t\t")
-            print(np.round(self.NaiveBayesFscore[i], 5))
-            # print(end = "  Ranks:\t")
-            # print(ranks["kNN"][i], end = "\t\t")
-            # print(ranks["SVM"][i], end = "\t\t")
-            # print(ranks["NaiveBayes"][i], end = "\n"*2)
-            print("-" * 30)
+        print("-" * 80)
+        print(f"avg rank\t{mean_kNNrank}\t\t\t{mean_SVMrank}\t\t\t{mean_NaiveBayesrank}")
+        print("-" * 80)
 
 def millisecondsFromTimedelta(timedelta, digits = 6):
     """Compute the milliseconds in a timedelta"""
