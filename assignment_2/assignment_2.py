@@ -61,35 +61,35 @@ class spamDetection:
         self.spamDict = spamDict
 
     def run_kNNclassifier(self, n_neighbors, X_train, X_test, y_train, y_test, foldNr):
-        kNNmodel = KNeighborsClassifier(n_neighbors)
+        # kNNmodel = KNeighborsClassifier(n_neighbors)
         startTime = time.time()
-        kNNmodel.fit(X_train, y_train)
+        self.kNNmodel.fit(X_train, y_train)
         endTime = time.time()
-        accuracy = kNNmodel.score(X_test, y_test)
-        y_pred = kNNmodel.predict(X_test)
+        accuracy = self.kNNmodel.score(X_test, y_test)
+        y_pred = self.kNNmodel.predict(X_test)
         self.kNNFscore.append(f1_score(y_test, y_pred))
         self.kNNtime.append(timedelta(seconds=endTime - startTime))
         return accuracy
 
     def run_SVMclassifier(self, X_train, X_test, y_train, y_test, foldNr):
-        SVMmodel = SVC()
+        # SVMmodel = SVC()
         startTime = time.time()
-        SVMmodel.fit(X_train, y_train)
+        self.SVMmodel.fit(X_train, y_train)
         endTime = time.time()
-        accuracy = SVMmodel.score(X_test, y_test)
-        y_pred = SVMmodel.predict(X_test)
+        accuracy = self.SVMmodel.score(X_test, y_test)
+        y_pred = self.SVMmodel.predict(X_test)
         self.SVMFscore.append(f1_score(y_test, y_pred))
         self.SVMtime.append(timedelta(seconds=endTime - startTime))
         return accuracy
 
 
     def run_NaiveBayesClassifier(self, X_train, X_test, y_train, y_test, foldNr):
-        NBmodel = ComplementNB()
+        # NBmodel = ComplementNB()
         startTime = time.time()
-        NBmodel.fit(X_train, y_train)
+        self.NBmodel.fit(X_train, y_train)
         endTime = time.time()
-        accuracy = NBmodel.score(X_test, y_test)
-        y_pred = NBmodel.predict(X_test)
+        accuracy = self.NBmodel.score(X_test, y_test)
+        y_pred = self.NBmodel.predict(X_test)
         self.NaiveBayesFscore.append(f1_score(y_test, y_pred))
         self.NaiveBayestime.append(timedelta(seconds=endTime - startTime))
         return accuracy
@@ -106,6 +106,10 @@ class spamDetection:
         accuracy_SVM = []
         accuracy_NaiveBayes = []
         foldnr = 1
+
+        self.kNNmodel = KNeighborsClassifier(20)
+        self.SVMmodel = SVC()
+        self.NBmodel = ComplementNB()
         for train_index, test_index in skf.split(X,y): # X is the feature set and y is the target
             print("training... foldnr:", foldnr)
             X_train, X_test = X[train_index], X[test_index]
@@ -213,8 +217,8 @@ class spamDetection:
         sum_squaredDiff_nk *= 1/(len(ranks["kNN"])*(len(ranks)-1))
         print("\nFriedman test:")
         print("avg total rank:", mean_TOTrank)
-        print("the sum of squared differences(spread of rank centroids):", sum_squaredDiff)
-        print("the sum of squared differences nk(spread over all ranks):", sum_squaredDiff_nk)
+        print("the sum of squared differences (spread of rank centroids):", sum_squaredDiff)
+        print("the sum of squared differences (spread over all ranks):", sum_squaredDiff_nk)
         return (mean_TOTrank, sum_squaredDiff, sum_squaredDiff_nk, mean_ranks)
 
     def run_calcCriticalValue(self, k, n, siglevel):
@@ -243,7 +247,7 @@ class spamDetection:
             if mean_ranks[1] not in criticalDifferenceAlgorithms:
                 if abs(mean_ranks[2] - mean_ranks[1]) > CD:
                     criticalDifferenceAlgorithms.append(mean_ranks[1])
-            print(f"There is a significant difference between the algorithms with average ranks: ",criticalDifferenceAlgorithms)
+            print(f"There is a significant difference between the algorithms with average ranks:",criticalDifferenceAlgorithms)
         else:
             print(f"There is no significant difference between the algorithms")
 
